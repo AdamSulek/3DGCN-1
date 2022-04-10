@@ -1,5 +1,5 @@
-from keras import initializers, regularizers, activations
-from keras.engine.topology import Layer
+from tensorflow.keras import initializers, regularizers, activations
+from tensorflow.keras.layers import Layer
 import tensorflow as tf
 
 
@@ -29,17 +29,27 @@ class GraphEmbed(Layer):
         return [atoms, vector_features]
 
     def compute_output_shape(self, input_shape):
-        return [input_shape[0], (input_shape[0][0], input_shape[0][1], input_shape[-1][-1], input_shape[0][-1])]
+        return [
+            input_shape[0],
+            (
+                input_shape[0][0],
+                input_shape[0][1],
+                input_shape[-1][-1],
+                input_shape[0][-1],
+            ),
+        ]
 
 
 class GraphSToS(Layer):
-    def __init__(self,
-                 filters,
-                 kernel_initializer='glorot_uniform',
-                 kernel_regularizer=None,
-                 bias_initializer='zeros',
-                 activation=None,
-                 **kwargs):
+    def __init__(
+        self,
+        filters,
+        kernel_initializer="glorot_uniform",
+        kernel_regularizer=None,
+        bias_initializer="zeros",
+        activation=None,
+        **kwargs
+    ):
         self.activation = activations.get(activation)
         self.kernel_initializer = initializers.get(kernel_initializer)
         self.bias_initializer = initializers.get(bias_initializer)
@@ -50,19 +60,21 @@ class GraphSToS(Layer):
 
     def get_config(self):
         base_config = super(GraphSToS, self).get_config()
-        base_config['filters'] = self.filters
+        base_config["filters"] = self.filters
         return base_config
 
     def build(self, input_shape):
         atom_feat = input_shape[-1]
-        self.w_ss = self.add_weight(shape=(atom_feat * 2, self.filters),
-                                    initializer=self.kernel_initializer,
-                                    regularizer=self.kernel_regularizer,
-                                    name='w_ss')
+        self.w_ss = self.add_weight(
+            shape=(atom_feat * 2, self.filters),
+            initializer=self.kernel_initializer,
+            regularizer=self.kernel_regularizer,
+            name="w_ss",
+        )
 
-        self.b_ss = self.add_weight(shape=(self.filters,),
-                                    name='b_ss',
-                                    initializer=self.bias_initializer)
+        self.b_ss = self.add_weight(
+            shape=(self.filters,), name="b_ss", initializer=self.bias_initializer
+        )
 
         super(GraphSToS, self).build(input_shape)
 
@@ -86,7 +98,9 @@ class GraphSToS(Layer):
         # Linear combination
         scalar_features = tf.reshape(scalar_features, [-1, atom_feat * 2])
         scalar_features = tf.matmul(scalar_features, self.w_ss) + self.b_ss
-        scalar_features = tf.reshape(scalar_features, [-1, max_atoms, max_atoms, self.filters])
+        scalar_features = tf.reshape(
+            scalar_features, [-1, max_atoms, max_atoms, self.filters]
+        )
 
         # Activation
         scalar_features = self.activation(scalar_features)
@@ -98,13 +112,15 @@ class GraphSToS(Layer):
 
 
 class GraphSToV(Layer):
-    def __init__(self,
-                 filters,
-                 kernel_initializer='glorot_uniform',
-                 kernel_regularizer=None,
-                 bias_initializer='zeros',
-                 activation=None,
-                 **kwargs):
+    def __init__(
+        self,
+        filters,
+        kernel_initializer="glorot_uniform",
+        kernel_regularizer=None,
+        bias_initializer="zeros",
+        activation=None,
+        **kwargs
+    ):
         self.activation = activations.get(activation)
         self.kernel_initializer = initializers.get(kernel_initializer)
         self.bias_initializer = initializers.get(bias_initializer)
@@ -115,19 +131,21 @@ class GraphSToV(Layer):
 
     def get_config(self):
         base_config = super(GraphSToV, self).get_config()
-        base_config['filters'] = self.filters
+        base_config["filters"] = self.filters
         return base_config
 
     def build(self, input_shape):
         atom_feat = input_shape[0][-1]
-        self.w_sv = self.add_weight(shape=(atom_feat * 2, self.filters),
-                                    initializer=self.kernel_initializer,
-                                    regularizer=self.kernel_regularizer,
-                                    name='w_sv')
+        self.w_sv = self.add_weight(
+            shape=(atom_feat * 2, self.filters),
+            initializer=self.kernel_initializer,
+            regularizer=self.kernel_regularizer,
+            name="w_sv",
+        )
 
-        self.b_sv = self.add_weight(shape=(self.filters,),
-                                    name='b_sv',
-                                    initializer=self.bias_initializer)
+        self.b_sv = self.add_weight(
+            shape=(self.filters,), name="b_sv", initializer=self.bias_initializer
+        )
 
         super(GraphSToV, self).build(input_shape)
 
@@ -153,7 +171,9 @@ class GraphSToV(Layer):
         # Apply weights
         scalar_features = tf.reshape(scalar_features, [-1, atom_feat * 2])
         scalar_features = tf.matmul(scalar_features, self.w_sv) + self.b_sv
-        scalar_features = tf.reshape(scalar_features, [-1, max_atoms, max_atoms, 1, self.filters])
+        scalar_features = tf.reshape(
+            scalar_features, [-1, max_atoms, max_atoms, 1, self.filters]
+        )
         scalar_features = tf.tile(scalar_features, [1, 1, 1, coor_dims, 1])
 
         # Expand distances to 5D
@@ -169,17 +189,25 @@ class GraphSToV(Layer):
         return vector_features
 
     def compute_output_shape(self, input_shape):
-        return input_shape[0][0], input_shape[0][1], input_shape[0][1], input_shape[1][-1], self.filters
+        return (
+            input_shape[0][0],
+            input_shape[0][1],
+            input_shape[0][1],
+            input_shape[1][-1],
+            self.filters,
+        )
 
 
 class GraphVToV(Layer):
-    def __init__(self,
-                 filters,
-                 kernel_initializer='glorot_uniform',
-                 kernel_regularizer=None,
-                 bias_initializer='zeros',
-                 activation=None,
-                 **kwargs):
+    def __init__(
+        self,
+        filters,
+        kernel_initializer="glorot_uniform",
+        kernel_regularizer=None,
+        bias_initializer="zeros",
+        activation=None,
+        **kwargs
+    ):
         self.activation = activations.get(activation)
         self.kernel_initializer = initializers.get(kernel_initializer)
         self.bias_initializer = initializers.get(bias_initializer)
@@ -190,19 +218,21 @@ class GraphVToV(Layer):
 
     def get_config(self):
         base_config = super(GraphVToV, self).get_config()
-        base_config['filters'] = self.filters
+        base_config["filters"] = self.filters
         return base_config
 
     def build(self, input_shape):
         atom_feat = input_shape[-1]
-        self.w_vv = self.add_weight(shape=(atom_feat * 2, self.filters),
-                                    initializer=self.kernel_initializer,
-                                    regularizer=self.kernel_regularizer,
-                                    name='w_vv')
+        self.w_vv = self.add_weight(
+            shape=(atom_feat * 2, self.filters),
+            initializer=self.kernel_initializer,
+            regularizer=self.kernel_regularizer,
+            name="w_vv",
+        )
 
-        self.b_vv = self.add_weight(shape=(self.filters,),
-                                    name='b_vv',
-                                    initializer=self.bias_initializer)
+        self.b_vv = self.add_weight(
+            shape=(self.filters,), name="b_vv", initializer=self.bias_initializer
+        )
 
         super(GraphVToV, self).build(input_shape)
 
@@ -217,7 +247,9 @@ class GraphVToV(Layer):
         coor_dims = int(vector_features.shape[-2])
 
         # Expand vector features to 5D
-        vector_features = tf.reshape(vector_features, [-1, max_atoms, 1, coor_dims, atom_feat])
+        vector_features = tf.reshape(
+            vector_features, [-1, max_atoms, 1, coor_dims, atom_feat]
+        )
         vector_features = tf.tile(vector_features, [1, 1, max_atoms, 1, 1])
 
         # Combine between atoms
@@ -227,7 +259,9 @@ class GraphVToV(Layer):
         # Apply weights
         vector_features = tf.reshape(vector_features, [-1, atom_feat * 2])
         vector_features = tf.matmul(vector_features, self.w_vv) + self.b_vv
-        vector_features = tf.reshape(vector_features, [-1, max_atoms, max_atoms, coor_dims, self.filters])
+        vector_features = tf.reshape(
+            vector_features, [-1, max_atoms, max_atoms, coor_dims, self.filters]
+        )
 
         # Activation
         vector_features = self.activation(vector_features)
@@ -235,17 +269,25 @@ class GraphVToV(Layer):
         return vector_features
 
     def compute_output_shape(self, input_shape):
-        return input_shape[0], input_shape[1], input_shape[1], input_shape[-2], self.filters
+        return (
+            input_shape[0],
+            input_shape[1],
+            input_shape[1],
+            input_shape[-2],
+            self.filters,
+        )
 
 
 class GraphVToS(Layer):
-    def __init__(self,
-                 filters,
-                 kernel_initializer='glorot_uniform',
-                 kernel_regularizer=None,
-                 bias_initializer='zeros',
-                 activation=None,
-                 **kwargs):
+    def __init__(
+        self,
+        filters,
+        kernel_initializer="glorot_uniform",
+        kernel_regularizer=None,
+        bias_initializer="zeros",
+        activation=None,
+        **kwargs
+    ):
         self.activation = activations.get(activation)
         self.kernel_initializer = initializers.get(kernel_initializer)
         self.bias_initializer = initializers.get(bias_initializer)
@@ -256,19 +298,21 @@ class GraphVToS(Layer):
 
     def get_config(self):
         base_config = super(GraphVToS, self).get_config()
-        base_config['filters'] = self.filters
+        base_config["filters"] = self.filters
         return base_config
 
     def build(self, input_shape):
         atom_feat = input_shape[0][-1]
-        self.w_vs = self.add_weight(shape=(atom_feat * 2, self.filters),
-                                    initializer=self.kernel_initializer,
-                                    regularizer=self.kernel_regularizer,
-                                    name='w_vs')
+        self.w_vs = self.add_weight(
+            shape=(atom_feat * 2, self.filters),
+            initializer=self.kernel_initializer,
+            regularizer=self.kernel_regularizer,
+            name="w_vs",
+        )
 
-        self.b_vs = self.add_weight(shape=(self.filters,),
-                                    name='b_vs',
-                                    initializer=self.bias_initializer)
+        self.b_vs = self.add_weight(
+            shape=(self.filters,), name="b_vs", initializer=self.bias_initializer
+        )
 
         super(GraphVToS, self).build(input_shape)
 
@@ -284,7 +328,9 @@ class GraphVToS(Layer):
         coor_dims = int(vector_features.shape[-2])
 
         # Expand vector features to 5D
-        vector_features = tf.reshape(vector_features, [-1, max_atoms, 1, coor_dims, atom_feat])
+        vector_features = tf.reshape(
+            vector_features, [-1, max_atoms, 1, coor_dims, atom_feat]
+        )
         vector_features = tf.tile(vector_features, [1, 1, max_atoms, 1, 1])
 
         # Combine between atoms
@@ -294,7 +340,9 @@ class GraphVToS(Layer):
         # Apply weights
         vector_features = tf.reshape(vector_features, [-1, atom_feat * 2])
         vector_features = tf.matmul(vector_features, self.w_vs) + self.b_vs
-        vector_features = tf.reshape(vector_features, [-1, max_atoms, max_atoms, coor_dims, self.filters])
+        vector_features = tf.reshape(
+            vector_features, [-1, max_atoms, max_atoms, coor_dims, self.filters]
+        )
 
         # # Calculate r^ = r / |r| and expand it to 5D
         # distances_hat = tf.sqrt(tf.reduce_sum(tf.square(distances), axis=-1, keepdims=True))
@@ -320,14 +368,16 @@ class GraphVToS(Layer):
 
 
 class GraphConvS(Layer):
-    def __init__(self,
-                 filters,
-                 pooling='sum',
-                 kernel_initializer='glorot_uniform',
-                 kernel_regularizer=None,
-                 bias_initializer='zeros',
-                 activation=None,
-                 **kwargs):
+    def __init__(
+        self,
+        filters,
+        pooling="sum",
+        kernel_initializer="glorot_uniform",
+        kernel_regularizer=None,
+        bias_initializer="zeros",
+        activation=None,
+        **kwargs
+    ):
         self.activation = activations.get(activation)
         self.kernel_initializer = initializers.get(kernel_initializer)
         self.bias_initializer = initializers.get(bias_initializer)
@@ -339,21 +389,25 @@ class GraphConvS(Layer):
 
     def get_config(self):
         base_config = super(GraphConvS, self).get_config()
-        base_config['filters'] = self.filters
-        base_config['pooling'] = self.pooling
+        base_config["filters"] = self.filters
+        base_config["pooling"] = self.pooling
         return base_config
 
     def build(self, input_shape):
         atom_feat_1 = input_shape[0][-1]
         atom_feat_2 = input_shape[1][-1]
-        self.w_conv_scalar = self.add_weight(shape=(atom_feat_1 + atom_feat_2, self.filters),
-                                             initializer=self.kernel_initializer,
-                                             regularizer=self.kernel_regularizer,
-                                             name='w_conv_scalar')
+        self.w_conv_scalar = self.add_weight(
+            shape=(atom_feat_1 + atom_feat_2, self.filters),
+            initializer=self.kernel_initializer,
+            regularizer=self.kernel_regularizer,
+            name="w_conv_scalar",
+        )
 
-        self.b_conv_scalar = self.add_weight(shape=(self.filters,),
-                                             name='b_conv_scalar',
-                                             initializer=self.bias_initializer)
+        self.b_conv_scalar = self.add_weight(
+            shape=(self.filters,),
+            name="b_conv_scalar",
+            initializer=self.bias_initializer,
+        )
         super(GraphConvS, self).build(input_shape)
 
     def call(self, inputs, mask=None):
@@ -373,8 +427,12 @@ class GraphConvS(Layer):
 
         # Linear combination
         scalar_features = tf.reshape(scalar_features, [-1, atom_feat_1 + atom_feat_2])
-        scalar_features = tf.matmul(scalar_features, self.w_conv_scalar) + self.b_conv_scalar
-        scalar_features = tf.reshape(scalar_features, [-1, max_atoms, max_atoms, self.filters])
+        scalar_features = (
+            tf.matmul(scalar_features, self.w_conv_scalar) + self.b_conv_scalar
+        )
+        scalar_features = tf.reshape(
+            scalar_features, [-1, max_atoms, max_atoms, self.filters]
+        )
 
         # Adjacency masking
         adjacency = tf.reshape(adjacency, [-1, max_atoms, max_atoms, 1])
@@ -397,14 +455,16 @@ class GraphConvS(Layer):
 
 
 class GraphConvV(Layer):
-    def __init__(self,
-                 filters,
-                 pooling='sum',
-                 kernel_initializer='glorot_uniform',
-                 kernel_regularizer=None,
-                 bias_initializer='zeros',
-                 activation=None,
-                 **kwargs):
+    def __init__(
+        self,
+        filters,
+        pooling="sum",
+        kernel_initializer="glorot_uniform",
+        kernel_regularizer=None,
+        bias_initializer="zeros",
+        activation=None,
+        **kwargs
+    ):
         self.activation = activations.get(activation)
         self.kernel_initializer = initializers.get(kernel_initializer)
         self.bias_initializer = initializers.get(bias_initializer)
@@ -416,21 +476,25 @@ class GraphConvV(Layer):
 
     def get_config(self):
         base_config = super(GraphConvV, self).get_config()
-        base_config['filters'] = self.filters
-        base_config['pooling'] = self.pooling
+        base_config["filters"] = self.filters
+        base_config["pooling"] = self.pooling
         return base_config
 
     def build(self, input_shape):
         atom_feat_1 = input_shape[0][-1]
         atom_feat_2 = input_shape[1][-1]
-        self.w_conv_vector = self.add_weight(shape=(atom_feat_1 + atom_feat_2, self.filters),
-                                             initializer=self.kernel_initializer,
-                                             regularizer=self.kernel_regularizer,
-                                             name='w_conv_vector')
+        self.w_conv_vector = self.add_weight(
+            shape=(atom_feat_1 + atom_feat_2, self.filters),
+            initializer=self.kernel_initializer,
+            regularizer=self.kernel_regularizer,
+            name="w_conv_vector",
+        )
 
-        self.b_conv_vector = self.add_weight(shape=(self.filters,),
-                                             initializer=self.bias_initializer,
-                                             name='b_conv_vector')
+        self.b_conv_vector = self.add_weight(
+            shape=(self.filters,),
+            initializer=self.bias_initializer,
+            name="b_conv_vector",
+        )
         super(GraphConvV, self).build(input_shape)
 
     def call(self, inputs, mask=None):
@@ -451,8 +515,12 @@ class GraphConvV(Layer):
 
         # Linear combination
         vector_features = tf.reshape(vector_features, [-1, atom_feat_1 + atom_feat_2])
-        vector_features = tf.matmul(vector_features, self.w_conv_vector) + self.b_conv_vector
-        vector_features = tf.reshape(vector_features, [-1, max_atoms, max_atoms, coor_dims, self.filters])
+        vector_features = (
+            tf.matmul(vector_features, self.w_conv_vector) + self.b_conv_vector
+        )
+        vector_features = tf.reshape(
+            vector_features, [-1, max_atoms, max_atoms, coor_dims, self.filters]
+        )
 
         # Adjacency masking
         adjacency = tf.reshape(adjacency, [-1, max_atoms, max_atoms, 1, 1])
@@ -475,11 +543,7 @@ class GraphConvV(Layer):
 
 
 class GraphGather(Layer):
-    def __init__(self,
-                 pooling="sum",
-                 system="cartesian",
-                 activation=None,
-                 **kwargs):
+    def __init__(self, pooling="sum", system="cartesian", activation=None, **kwargs):
         self.activation = activations.get(activation)
         self.pooling = pooling
         self.system = system
@@ -491,8 +555,8 @@ class GraphGather(Layer):
 
     def get_config(self):
         base_config = super(GraphGather, self).get_config()
-        base_config['pooling'] = self.pooling
-        base_config['system'] = self.system
+        base_config["pooling"] = self.pooling
+        base_config["system"] = self.system
         return base_config
 
     def call(self, inputs, mask=None):
@@ -515,9 +579,14 @@ class GraphGather(Layer):
 
             vector_features = tf.transpose(vector_features, perm=[0, 2, 3, 1])
             size = tf.sqrt(tf.reduce_sum(tf.square(vector_features), axis=1))
-            idx = tf.reshape(tf.argmax(size, axis=-1, output_type=tf.int32), [-1, 1, atom_feat, 1])
+            idx = tf.reshape(
+                tf.argmax(size, axis=-1, output_type=tf.int32), [-1, 1, atom_feat, 1]
+            )
             idx = tf.tile(idx, [1, coor_dims, 1, 1])
-            vector_features = tf.reshape(tf.batch_gather(vector_features, idx), [-1, coor_dims, atom_feat])
+            vector_features = tf.reshape(
+                tf.compat.v1.batch_gather(vector_features, idx),
+                [-1, coor_dims, atom_feat],
+            )
 
         # Activation
         scalar_features = self.activation(scalar_features)
@@ -533,4 +602,7 @@ class GraphGather(Layer):
         return [scalar_features, vector_features]
 
     def compute_output_shape(self, inputs_shape):
-        return [(inputs_shape[0][0], inputs_shape[0][2]), (inputs_shape[1][0], inputs_shape[1][2], inputs_shape[1][3])]
+        return [
+            (inputs_shape[0][0], inputs_shape[0][2]),
+            (inputs_shape[1][0], inputs_shape[1][2], inputs_shape[1][3]),
+        ]

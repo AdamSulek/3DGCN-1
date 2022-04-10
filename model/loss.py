@@ -22,3 +22,10 @@ def std_r2(std=1):
         return 1 - ss_res / (ss_tot + K.epsilon())
 
     return r2
+
+
+def masked_binary_crossentropy(y_true, y_pred):
+    crosss_entropy = tf.keras.metrics.binary_crossentropy(
+        y_true, y_pred, from_logits=False, label_smoothing=0.0, axis=-1
+    )
+    return crosss_entropy
